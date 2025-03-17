@@ -1,0 +1,5 @@
+crt0.o              :   crt0.asm \
+                        xcs.inc
+xcs.o               :   xcs.asm xcs.inc
+app.o               :   app.asm app.inc \
+                        xcs.inc
