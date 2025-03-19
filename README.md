@@ -1,6 +1,6 @@
 # AppleII 向けにゲームをつくるための準備
 
-[![Templete](http://img.youtube.com/vi/-e1odH8IzAk/0.jpg)](https://www.youtube.com/watch?v=-e1odH8IzAk)
+[![Templete](http://img.youtube.com/vi/pVWaWU5oW-E/0.jpg)](https://www.youtube.com/watch?v=pVWaWU5oW-E)
 
 ## SIDELOAD
 Releases にある templete-xxx.d88 ファイルをダウンロード、各種 X1 環境で動かしてください。
