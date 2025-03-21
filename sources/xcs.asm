@@ -2669,6 +2669,9 @@ _xcs_draw_image:
     ld      a, h
     or      l
     jr      nz, xcs_draw_image_x8
+    ld      hl, $0018
+    add     hl, de
+    ex      de, hl
     pop     bc
     ld      a, b
     add     a, $08
@@ -2685,6 +2688,151 @@ _xcs_draw_image:
 
     ; 終了
     ret
+
+; グラフィック VRAM にイメージを読み込む
+;
+_xcs_load_image:
+
+    ; IN
+    ;   de = ファイル名
+
+    ; 引数の保存
+    ld      (xcs_load_image_filename), de
+    
+    ; アドレスの設定
+    ld      hl, XCS_IO_GRAPHIC_VRAM_BLUE
+    ld      (xcs_load_image_address), hl
+
+    ; リトライ
+.xcs_load_image_retry
+
+    ; ファイルの検索
+    ex      de, hl
+    call    xcs_fdc_0_find_directory
+    ld      a, d
+    or      e
+    jp      z, xcs_load_image_error
+    ld      hl, xcs_load_image_string_load
+    call    _xcs_debug_put_string
+    ld      hl, (xcs_load_image_filename)
+    call    _xcs_debug_put_string
+    ld      a, '\"'
+    call    _xcs_debug_put_char
+
+    ; ファイルサイズの取得
+    ld      hl, XCS_HU_DIRECTORY_SIZE
+    add     hl, de
+    ld      c, (hl)
+    inc     hl
+    ld      b, (hl)
+    ld      (xcs_load_image_bytes), bc
+
+    ; 開始クラスタの取得
+    ld      hl, XCS_HU_DIRECTORY_START_CLUSTER
+    add     hl, de
+    ld      d, (hl)
+
+    ; クラスタの読み込み／d = クラスタ番号
+.xcs_load_image_loop
+
+    ; FAT の取得
+    ld      c, d
+    ld      b, $00
+    ld      hl, xcs_fdc_0_fat
+    add     hl, bc
+    ld      a, (hl)
+    ld      (xcs_load_image_fat), a
+
+    ; ヘッドの選択
+    srl     d
+    push    de
+    jr      c, xcs_load_image_head_1
+    call    xcs_fdc_0_start_0
+    jr      xcs_load_image_head_end
+.xcs_load_image_head_1
+    call    xcs_fdc_0_start_1
+.xcs_load_image_head_end
+    pop     de
+
+    ; 1 クラスタの読み込みの開始
+    ld      e, $00
+.xcs_load_image_cluster
+
+    ; 1 セクタの読み込み
+    call    xcs_fdc_0_load_buffer
+    ld      hl, xcs_fdc_buffer
+    ld      bc, (xcs_load_image_address)
+.xcs_load_image_vram
+    ld      a, (hl)
+    out     (c), a
+    inc     hl
+    inc     bc
+    ld      a, c
+    or      a
+    jr      nz, xcs_load_image_vram
+    ld      (xcs_load_image_address), bc
+    ld      a, e
+    and     $03
+    jr      nz, xcs_load_image_cluster
+    ld      a, b
+    add     a, $04
+    ld      (xcs_load_image_address + $0001), a
+    and     $18
+    jr      nz, xcs_load_image_cluster
+    bit     6, a
+    jr      z, xcs_load_image_cluster_next
+    add     a, $40
+    ld      (xcs_load_image_address + $0001), a
+    
+    ; 次のクラスタへ
+.xcs_load_image_cluster_next
+    ld      a, (xcs_load_image_bytes + $0001)
+    sub     $10
+    ld      (xcs_load_image_bytes + $0001), a
+    jr      z, xcs_load_image_end
+    ld      a, (xcs_load_image_fat)
+    ld      d, a
+    jr      xcs_load_image_loop
+
+    ; 終了
+.xcs_load_image_end
+    call    xcs_fdc_0_stop
+    ret
+
+    ;  エラー
+.xcs_load_image_error
+    call    _xcs_debug_newline
+    ld      a, '\"'
+    call    _xcs_debug_put_char
+    ld      hl, (xcs_load_image_filename)
+    call    _xcs_debug_put_string
+    ld      hl, xcs_load_image_string_error
+    call    _xcs_debug_put_string
+    call    xcs_fdc_error
+    ld      de, (xcs_load_image_filename)
+    jp      xcs_load_image_retry
+
+; ファイル名
+.xcs_load_image_filename
+    defs    $02
+
+; アドレス
+.xcs_load_image_address
+    defs    $02
+
+; ファイルサイズ
+.xcs_load_image_bytes
+    defs    $02
+
+; FAT
+.xcs_load_image_fat
+    defs    $01
+
+; 文字列
+.xcs_load_image_string_load
+    defb    "\nLOAD\"", $00
+.xcs_load_image_string_error
+    defb    "\" NOT FOUND.", $00
 
 ; 8x8 サイズのタイルを取得する
 ;

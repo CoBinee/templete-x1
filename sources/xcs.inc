@@ -402,6 +402,7 @@
     extern  _xcs_calc_graphic_vram_green
     extern  _xcs_clear_graphic_vram
     extern  _xcs_draw_image
+    extern  _xcs_load_image
     extern  _xcs_calc_8x8_tile
     extern  _xcs_draw_8x8_tile
     extern  _xcs_get_hex_chars

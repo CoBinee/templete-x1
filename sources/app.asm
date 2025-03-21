@@ -164,10 +164,10 @@ app_files:
 ;
 app_draw_image:
 
-    ; ファイルの読み込み
-    ld      de, app_draw_image_filename
-    ld      hl, $8000
-    call    _xcs_bload
+;   ; ファイルの読み込み
+;   ld      de, app_draw_image_filename
+;   ld      hl, $8000
+;   call    _xcs_bload
 
     ; スクリーン 0 に設定
     call    _xcs_set_screen_0
@@ -178,10 +178,14 @@ app_draw_image:
     ; VRAM のクリア
     call    app_clear_vram
 
-    ; イメージの描画
-    ld      de, $8000
-    call    _xcs_draw_image
+;   ; イメージの描画
+;   ld      de, $8000
+;   call    _xcs_draw_image
 
+    ; イメージの読み込み
+    ld      de, app_draw_image_filename
+    call    _xcs_load_image
+    
     ; 終了
     ret
 
