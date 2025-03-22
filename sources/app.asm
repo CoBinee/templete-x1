@@ -185,7 +185,7 @@ app_draw_image:
     ; イメージの読み込み
     ld      de, app_draw_image_filename
     call    _xcs_load_image
-    
+
     ; 終了
     ret
 

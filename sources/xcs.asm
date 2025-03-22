@@ -2719,13 +2719,13 @@ _xcs_load_image:
     ld      a, '\"'
     call    _xcs_debug_put_char
 
-    ; ファイルサイズの取得
-    ld      hl, XCS_HU_DIRECTORY_SIZE
-    add     hl, de
-    ld      c, (hl)
-    inc     hl
-    ld      b, (hl)
-    ld      (xcs_load_image_bytes), bc
+;   ; ファイルサイズの取得
+;   ld      hl, XCS_HU_DIRECTORY_SIZE
+;   add     hl, de
+;   ld      c, (hl)
+;   inc     hl
+;   ld      b, (hl)
+;   ld      (xcs_load_image_bytes), bc
 
     ; 開始クラスタの取得
     ld      hl, XCS_HU_DIRECTORY_START_CLUSTER
@@ -2754,41 +2754,71 @@ _xcs_load_image:
 .xcs_load_image_head_end
     pop     de
 
-    ; 1 クラスタの読み込みの開始
-    ld      e, $00
-.xcs_load_image_cluster
+    ; トラックの指定
+    ld      a, d
+    call    xcs_fdc_0_seek
 
-    ; 1 セクタの読み込み
-    call    xcs_fdc_0_load_buffer
-    ld      hl, xcs_fdc_buffer
-    ld      bc, (xcs_load_image_address)
-.xcs_load_image_vram
-    ld      a, (hl)
+    ; セクタの指定（1..16 を指定する）
+    ld      bc, XCS_IO_FDC_SECTOR
+    ld      a, $01
     out     (c), a
-    inc     hl
+    call    xcs_fdc_ready
+
+    ; bc に読み込むバイト数を設定
+    ld      bc, (xcs_load_image_address)
+    ld      e, $04
+
+    ; アドレスの設定
+    exx
+    ld      b, XCS_IO_FDC_COMMAND >> 8
+    ld      de, (XCS_IO_FDC_DATA << 8) | XCS_IO_FDC_COMMAND & $ff
+
+    ; READ DATA コマンドの発行
+    ld      c, e
+    ld      a, XCS_IO_FDC_COMMAND_MULTI_READ_DATA
+    out     (c), a
+    exx
+
+    ; 少し待つ
+    ld      a, $07
+.xcs_load_image_wait
+    dec     a
+    jr      nz, xcs_load_image_wait
+
+    ; データの読み込み
+.xcs_load_image_read
+    exx
+    ld      c, e
+.xcs_load_image_request
+    in      a, (c)
+    bit     XCS_IO_FDC_STATUS_BUSY_BIT, a
+    jr      z, xcs_load_image_next
+    bit     XCS_IO_FDC_STATUS_DATA_REQUEST_BIT, a
+    jr      z, xcs_load_image_request
+    ld      c, d
+    in      a, (c)
+    exx
+    out     (c), a
     inc     bc
-    ld      a, c
-    or      a
-    jr      nz, xcs_load_image_vram
-    ld      (xcs_load_image_address), bc
-    ld      a, e
-    and     $03
-    jr      nz, xcs_load_image_cluster
+    bit     2, b
+    jr      z, xcs_load_image_read
     ld      a, b
-    add     a, $04
-    ld      (xcs_load_image_address + $0001), a
-    and     $18
-    jr      nz, xcs_load_image_cluster
-    bit     6, a
-    jr      z, xcs_load_image_cluster_next
-    add     a, $40
-    ld      (xcs_load_image_address + $0001), a
-    
+    add     $04
+    ld      b, a
+    dec     e
+    jr      nz, xcs_load_image_read
+    exx
+    ld      c, e
+    ld      a, XCS_IO_FDC_COMMAND_FORCE_INTERRUPT
+    out     (c), a
+    call    xcs_fdc_ready
+
     ; 次のクラスタへ
-.xcs_load_image_cluster_next
-    ld      a, (xcs_load_image_bytes + $0001)
-    sub     $10
-    ld      (xcs_load_image_bytes + $0001), a
+.xcs_load_image_next
+    exx
+    ld      (xcs_load_image_address), bc
+    ld      a, b
+    or      a
     jr      z, xcs_load_image_end
     ld      a, (xcs_load_image_fat)
     ld      d, a
