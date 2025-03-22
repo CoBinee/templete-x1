@@ -22,6 +22,9 @@
 
 _app_entry:
 
+    ; グラフィックを背面に設定
+    call    _xcs_set_priority_back
+
     ; カウンタの初期化
     xor     a
     ld      (app_update_counter), a
@@ -29,6 +32,10 @@ _app_entry:
     ; サウンドの初期化
     ld      hl, $0000
     ld      ($e000), hl
+
+    ; 乱数の初期化
+    call    _xcs_get_random_number
+    ld      (app_update_random), a
 
 ; アプリケーションの更新
 ;
@@ -85,6 +92,15 @@ _app_update:
     jr      app_update_next
 .app_update_se_end
 
+    ; 乱数の更新
+    ld      a, (_xcs_key_code_edge)
+    cp      'R'
+    jr      nz, app_update_random_end
+    call    _xcs_get_random_number
+    ld      (app_update_random), a
+    jr      app_update_next
+.app_update_random_end
+
     ; 更新の継続
 .app_update_next
 
@@ -134,6 +150,14 @@ _app_update:
     ld      de, $0008
     call    _xcs_debug_print_hex_chars
 
+    ; 乱数の表示
+    ld      a, (app_update_random)
+    ld      de, $000a
+    call    _xcs_print_hex_chars
+    ld      a, (app_update_random)
+    ld      de, $000a
+    call    _xcs_debug_print_hex_chars
+
     ; 垂直帰線期間の終了待ち
     call    _xcs_wait_v_dsip_off
 
@@ -144,15 +168,16 @@ _app_update:
 .app_update_counter
     defs    $01
 
+; 乱数
+.app_update_random
+    defs    $01
+
 ; ファイルリストを表示する
 ;
 app_files:
 
     ; スクリーン 1 に設定
     call    _xcs_set_screen_1
-
-    ; グラフィックを背面に設定
-    call    _xcs_set_priority_back
 
     ; ファイルリストの表示
     call    _xcs_files
@@ -171,9 +196,6 @@ app_draw_image:
 
     ; スクリーン 0 に設定
     call    _xcs_set_screen_0
-
-    ; グラフィックを前面に設定
-    call    _xcs_set_priority_front
 
     ; VRAM のクリア
     call    app_clear_vram
@@ -204,9 +226,6 @@ app_load_pcg:
 
     ; スクリーン 0 に設定
     call    _xcs_set_screen_0
-
-    ; グラフィックを背面に設定
-    call    _xcs_set_priority_back
 
     ; VRAM のクリア
     call    app_clear_vram
@@ -252,9 +271,6 @@ app_draw_tileset:
 
     ; スクリーン 0 に設定
     call    _xcs_set_screen_0
-
-    ; グラフィックを前面に設定
-    call    _xcs_set_priority_front
 
     ; VRAM のクリア
     call    app_clear_vram

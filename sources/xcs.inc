@@ -409,6 +409,7 @@
     extern  _xcs_get_decimal_string
     extern  _xcs_get_decimal_string_left
     extern  _xcs_get_decimal_string_right
+    extern  _xcs_get_random_number
 
     ; デバッグ
     extern  _xcs_debug_print_hex_chars

@@ -134,6 +134,9 @@ _xcs_update:
     ; PSG の更新
     call    xcs_update_psg
 
+    ; 乱数の更新
+    call    _xcs_get_random_number
+
     ; スクリーンの切り替え
     ld      a, (_xcs_key_code_edge)
     cp      $09
@@ -3118,6 +3121,39 @@ _xcs_debug_print_hex_chars:
 
     ; 終了
     ret
+
+; 乱数を取得する
+;
+_xcs_get_random_number:
+
+    ; OUT
+    ;   a = 乱数
+
+    ; レジスタの保存
+    push    hl
+    push    de
+
+    ; 乱数の生成
+    ld      hl, (xcs_get_random_number_seed)
+    ld      e, l
+    ld      d, h
+    add     hl, hl
+    add     hl, hl
+    add     hl, de
+    inc     hl
+    ld      (xcs_get_random_number_seed), hl
+    ld      a, h
+    
+    ; レジスタの復帰
+    pop     de
+    pop     hl
+    
+    ; 終了
+    ret
+
+; 乱数の種
+.xcs_get_random_number_seed
+    defw    2025
 
 ; デバッグ画面の指定した位置に文字列を表示する
 ;
