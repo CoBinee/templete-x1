@@ -21,13 +21,16 @@ _xcs_initialize:
 
     ; パレットの設定
     ld      bc, XCS_IO_PALETTE_BLUE
-    ld      a, $aa
+    ld      a, %10101010
+;   ld      a, %10100010
     out     (c), a
     inc     b
-    ld      a, $cc
+    ld      a, %11001100
+;   ld      a, %11000100
     out     (c), a
     inc     b
-    ld      a, $f0
+    ld      a, %11110000
+;   ld      a, %11110000
     out     (c), a
 
     ; プライオリティの設定／グラフィックをテキストの背面に
@@ -58,6 +61,11 @@ _xcs_initialize:
     ld      (_xcs_stick_push), a
     ld      (_xcs_stick_edge), a
     ld      (xcs_stick_last), a
+
+    ; コントローラの初期化
+    xor     a
+    ld      (_xcs_controller_push), a
+    ld      (_xcs_controller_edge), a
 
     ; PSG のクリア
     call    xcs_clear_psg
@@ -130,6 +138,9 @@ _xcs_update:
 
     ; スティックの更新
     call    xcs_update_stick
+
+    ; コントローラの更新
+    call    xcs_update_controller
 
     ; PSG の更新
     call    xcs_update_psg
@@ -1481,6 +1492,89 @@ _xcs_stick_edge:
 .xcs_stick_last
     defs    $01
 
+; コントローラを更新する
+;
+xcs_update_controller:
+
+    ; キーのコントローラ化
+    ld      a, (_xcs_key_code_push)
+    call    xcs_update_controller_key
+    ld      d, a
+    ld      a, (_xcs_key_code_edge)
+    call    xcs_update_controller_key
+    ld      e, a
+
+    ; スティックと結合
+    ld      a, (_xcs_stick_push)
+    or      d
+    ld      (_xcs_controller_push), a
+    ld      a, (_xcs_stick_edge)
+    or      e
+    ld      (_xcs_controller_edge), a
+
+    ; 終了
+    ret
+
+    ; キーをコントローラに変換
+.xcs_update_controller_key
+    cp      '8'
+    jr      z, xcs_update_controller_key_up
+    cp      $1e
+    jr      z, xcs_update_controller_key_up
+    cp      '2'
+    jr      z, xcs_update_controller_key_down
+    cp      $1f
+    jr      z, xcs_update_controller_key_down
+    cp      '4'
+    jr      z, xcs_update_controller_key_left
+    cp      $1d
+    jr      z, xcs_update_controller_key_left
+    cp      '6'
+    jr      z, xcs_update_controller_key_right
+    cp      $1c
+    jr      z, xcs_update_controller_key_right
+    cp      ' '
+    jr      z, xcs_update_controller_key_a
+    cp      'Z'
+    jr      z, xcs_update_controller_key_a
+    cp      'z'
+    jr      z, xcs_update_controller_key_a
+    cp      $0d
+    jr      z, xcs_update_controller_key_b
+    cp      'X'
+    jr      z, xcs_update_controller_key_b
+    cp      'x'
+    jr      z, xcs_update_controller_key_b
+    xor     a
+    jr      xcs_update_controller_key_end
+.xcs_update_controller_key_up
+    ld      a, XCS_CONTROLLER_UP
+    jr      xcs_update_controller_key_end
+.xcs_update_controller_key_down
+    ld      a, XCS_CONTROLLER_DOWN
+    jr      xcs_update_controller_key_end
+.xcs_update_controller_key_left
+    ld      a, XCS_CONTROLLER_LEFT
+    jr      xcs_update_controller_key_end
+.xcs_update_controller_key_right
+    ld      a, XCS_CONTROLLER_RIGHT
+    jr      xcs_update_controller_key_end
+.xcs_update_controller_key_a
+    ld      a, XCS_CONTROLLER_A
+    jr      xcs_update_controller_key_end
+.xcs_update_controller_key_b
+    ld      a, XCS_CONTROLLER_B
+;   jr      xcs_update_controller_key_end
+.xcs_update_controller_key_end
+    ret
+
+; コントローラデータ
+;
+_xcs_controller_push:
+    defs    $01
+_xcs_controller_edge:
+    defs    $01
+
 ; PSG をクリアする
 ;
 xcs_clear_psg:
@@ -1690,7 +1784,6 @@ xcs_update_psg_channel:
     ; 波形の更新
     bit     XCS_SOUND_NOTE_CONTROL_REST_BIT, c
     jr      nz, xcs_update_psg_channel_wave_rest
-.xcs_update_psg_channel_wave_note
     ld      hl, (xcs_psg_sound_instrument)
     ld      a, (de)
     push    af
@@ -1702,9 +1795,7 @@ xcs_update_psg_channel:
     rl      d
     ld      e, a
     add     hl, de
-    ld      a, (ix + XCS_PSG_CHANNEL_WAVE)
-    and     XCS_SOUND_WAVE_MASK
-    ld      e, a
+    ld      e, (ix + XCS_PSG_CHANNEL_WAVE)
     ld      d, $00
     add     hl, de
     pop     af
@@ -1714,8 +1805,17 @@ xcs_update_psg_channel:
 ;   ld      d, $00
     ld      hl, xcs_psg_wave_volume
     add     hl, de
-    ld      a, (hl)
+    ld      a, (ix + XCS_PSG_CHANNEL_WAVE)
+    cp      XCS_SOUND_WAVE_BYTES - $01
+    jr      nc, xcs_update_psg_channel_wave_cycle
     inc     (ix + XCS_PSG_CHANNEL_WAVE)
+    ld      a, (hl)
+    jr      xcs_update_psg_channel_volume
+.xcs_update_psg_channel_wave_cycle
+    ld      a, (hl)
+    or      a
+    jr      z, xcs_update_psg_channel_volume
+    ld      (ix + XCS_PSG_CHANNEL_WAVE), $00
     jr      xcs_update_psg_channel_volume
 .xcs_update_psg_channel_wave_rest
     xor     a
@@ -1818,19 +1918,15 @@ xcs_stop_psg_channel:
     ; 終了
     ret
 
-; サウンドファイルを読み込む
+; サウンドを定義する
 ;
 _xcs_load_sound:
     
     ; IN
-    ;   de = ファイル名
-    ;   hl = 読み込み先のアドレス
+    ;   de = サウンドデータ
 
     ; アドレスの保存
-    push    hl
-
-    ; ファイルの読み込み
-    call    _xcs_bload
+    push    de
 
     ; PSG のクリア
     call    xcs_clear_psg
@@ -2240,6 +2336,7 @@ _xcs_set_priority_front:
     ; プライオリティの設定
     ld      bc, XCS_IO_PRIORITY
     ld      a, %11111111
+;   ld      a, %11111110
     out     (c), a
 
     ; 終了
@@ -2527,6 +2624,10 @@ _xcs_print_string:
     push    bc
     push    de
 
+    ; 位置の保存
+    ld      a, e
+    ex      af, af'
+
     ; アドレス計算
 .xcs_print_string_calc
     call    _xcs_calc_text_vram_0
@@ -2548,6 +2649,9 @@ _xcs_print_string:
 
     ; 改行
 .xcs_print_string_newline
+    ex      af, af'
+    ld      e, a
+    ex      af, af'
     inc     d
     jr      xcs_print_string_calc
 
@@ -3004,6 +3108,7 @@ _xcs_get_decimal_string_left:
     cp      10
     jr      nc, xcs_get_decimal_string_10
     add     a, '0'
+    ex      de, hl
     jr      xcs_get_decimal_string_1
 
     ; 文字の取得
@@ -3154,27 +3259,6 @@ _xcs_get_random_number:
 ; 乱数の種
 .xcs_get_random_number_seed
     defw    2025
-
-; デバッグ画面の指定した位置に文字列を表示する
-;
-_xcs_debug_print_string:
-
-    ; IN
-    ;   de = テキスト Y/X 位置
-    ;   hl = 文字列
-
-    ; レジスタの保存
-    push    hl
-    push    bc
-    push    de
-
-    ; レジスタの復帰
-    pop     de
-    pop     bc
-    pop     hl
-
-    ; 終了
-    ret
 
 ; デバッグ画面に 1 byte の 16 進数を出力する
 ;

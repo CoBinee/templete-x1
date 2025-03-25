@@ -172,6 +172,12 @@
     defc    XCS_IO_STICK_RIGHT                          =   %00001000
     defc    XCS_IO_STICK_A                              =   %00100000
     defc    XCS_IO_STICK_B                              =   %01000000
+    defc    XCS_IO_STICK_UP_BIT                         =   0
+    defc    XCS_IO_STICK_DOWN_BIT                       =   1
+    defc    XCS_IO_STICK_LEFT_BIT                       =   2
+    defc    XCS_IO_STICK_RIGHT_BIT                      =   3
+    defc    XCS_IO_STICK_A_BIT                          =   5
+    defc    XCS_IO_STICK_B_BIT                          =   6
 
     ; テキスト
     defc    XCS_IO_TEXT_ATTRIBUTE                       =   $2000
@@ -358,6 +364,21 @@
     defc    XCS_SOUND_NOTE_VOLUME_MASK                  =   $0f
     defc    XCS_SOUND_NOTE_INSTRUMENT_MASK              =   $f0
 
+; コントローラ
+;
+    defc    XCS_CONTROLLER_UP                           =   %00000001
+    defc    XCS_CONTROLLER_DOWN                         =   %00000010
+    defc    XCS_CONTROLLER_LEFT                         =   %00000100
+    defc    XCS_CONTROLLER_RIGHT                        =   %00001000
+    defc    XCS_CONTROLLER_A                            =   %00100000
+    defc    XCS_CONTROLLER_B                            =   %01000000
+    defc    XCS_CONTROLLER_UP_BIT                       =   0
+    defc    XCS_CONTROLLER_DOWN_BIT                     =   1
+    defc    XCS_CONTROLLER_LEFT_BIT                     =   2
+    defc    XCS_CONTROLLER_RIGHT_BIT                    =   3
+    defc    XCS_CONTROLLER_A_BIT                        =   5
+    defc    XCS_CONTROLLER_B_BIT                        =   6
+
 
 ; 関数の宣言
 ;
@@ -413,7 +434,6 @@
 
     ; デバッグ
     extern  _xcs_debug_print_hex_chars
-    extern  _xcs_debug_print_string
     extern  _xcs_debug_put_hex_chars
     extern  _xcs_debug_put_char
     extern  _xcs_debug_put_string
@@ -430,3 +450,5 @@
     extern  _xcs_key_code_edge
     extern  _xcs_stick_push
     extern  _xcs_stick_edge
+    extern  _xcs_controller_push
+    extern  _xcs_controller_edge

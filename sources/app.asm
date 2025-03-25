@@ -321,6 +321,8 @@ app_play_bgm:
     jr      nz, app_play_bgm_play
     ld      de, app_play_bgm_filename
     ld      hl, $e000
+    call    _xcs_bload
+    ld      de, $e000
     call    _xcs_load_sound
 
     ; 曲の再生
@@ -353,6 +355,8 @@ app_play_se:
     jr      nz, app_play_se_play
     ld      de, app_play_bgm_filename
     ld      hl, $e000
+    call    _xcs_bload
+    ld      de, $e000
     call    _xcs_load_sound
 
     ; 曲の再生
