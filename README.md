@@ -1,4 +1,4 @@
-# AppleII 向けにゲームをつくるための準備
+# X1 向けにゲームをつくるための準備
 
 [![Templete](http://img.youtube.com/vi/pVWaWU5oW-E/0.jpg)](https://www.youtube.com/watch?v=pVWaWU5oW-E)
 
